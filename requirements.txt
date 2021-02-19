@@ -1,0 +1,12 @@
+numpy >= 1.16.0
+tqdm
+pandas
+flask
+Flask==1.0.2
+Flask-API
+click==6.7
+itsdangerous==0.24
+Jinja2==2.10
+MarkupSafe
+uWSGI==2.0.17.1
+Werkzeug==0.14.1

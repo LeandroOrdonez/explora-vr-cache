@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cot-querying
+  labels:
+    app: cot-querying
+spec:
+  type: LoadBalancer
+  ports:
+   - port: 80
+     targetPort: 80
+     nodePort: 30080
+  selector:
+   app: cot-querying
