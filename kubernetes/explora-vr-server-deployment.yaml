@@ -9,6 +9,7 @@ data:
   FLASK_APP: run.py
   APP_SETTINGS: production
   QUERY_LOG: ./issued_queries.log
+  ENABLE_PREFETCHING: true
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
