@@ -1,5 +1,5 @@
 from io import BytesIO
-from instance.prefecth_handler import PrefetchBufferHandler
+from instance.prefetch_handler import PrefetchBufferHandler
 import numpy as np
 import pandas as pd
 import os
