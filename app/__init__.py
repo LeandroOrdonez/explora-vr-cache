@@ -12,7 +12,6 @@ import re
 
 # local import
 from instance.config import app_config
-from instance.prefecth_handler import PrefetchBufferHandler
 
 api_endpoint = ''
 
@@ -44,14 +43,7 @@ def create_app(config_name):
         try:
             if int(quality) not in app.config["SUPPORTED_QUALITIES"]:
                 raise ValueError
-            # print(f'quality={quality}')
-            directory = f'{app.config["VIDEO_FILES_PATH"]}/{video_id}/{t_hor}x{t_vert}/{quality}'
-            print(f'directory={directory}')
-            # m = re.search(r'track(.*)_(.*)\.m4s',tile_name)
-            # filename = f'seg_dash_track{tile_id}_{segment_id}.m4s'
-            print(f'filename={filename}')
-            filepath = os.path.join(app.root_path, directory, filename)
-            tile_bytes = QHandler.get_video_tile(filepath)
+            tile_bytes = QHandler.get_video_tile(app.root_path, app.config["VIDEO_FILES_PATH"], t_hor, t_vert, video_id, quality, filename)
             # print('Sending File...')
             # return send_from_directory(directory, filename=filename)
             return send_file(tile_bytes, mimetype='video/iso.segment')

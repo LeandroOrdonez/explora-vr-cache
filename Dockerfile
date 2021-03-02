@@ -4,6 +4,8 @@ ENV FLASK_APP="run.py"
 ENV APP_SETTINGS="production"
 ENV QUERY_LOG="./issued_queries.log"
 ENV ENABLE_PREFETCHING="true"
+ENV BUFFER_SEQ_LENGTH 5
+ENV BUFFER_SIZE 20
 
 ARG gid=www-data
 ARG uid=www-data
