@@ -1,5 +1,5 @@
 import os, re, pickle, sys
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Queue
 
 sys.path.append(r'./instance/')
 class PrefetchBufferHandler:
@@ -9,6 +9,8 @@ class PrefetchBufferHandler:
         self.manager = Manager()
         self.fn = fn
         self.buffer = self.manager.dict()
+        self.buffer_keys = Queue()
+        self.buffer_keys_len = int(os.getenv("BUFFER_SIZE")) / int(os.getenv("BUFFER_SEQ_LENGTH"))
         self.prefetch_models = {
             'v0': pickle.load(open(f'./instance/model_files/em_v0_k{os.getenv("BUFFER_SEQ_LENGTH")}.pkl','rb')),
             'v2': pickle.load(open(f'./instance/model_files/em_v2_k{os.getenv("BUFFER_SEQ_LENGTH")}.pkl','rb')),
@@ -49,8 +51,12 @@ class PrefetchBufferHandler:
         return int(video), int(quality), int(tile), int(seg)
     
     def prefetch(self, args, video, segment, tile, next_segment=False):
-        actual_segment = segment if not next_segment else segment + 1 
+        actual_segment = segment if not next_segment else segment + 1
+        if self.buffer_keys.qsize() >= self.buffer_keys_len:
+            first_key = self.buffer_keys.get()
+            del self.buffer[first_key]
         self.buffer[(video, actual_segment)] = self.manager.dict()
+        self.buffer_keys.put((video, actual_segment))
         pred_seg = self.prefetch_models[f'v{video}'].predict_next_segment(actual_segment - 1, tile) if next_segment else self.prefetch_models[f'v{video}'].predict_current_segment(actual_segment)
         # print(pred_seg)
         for i_tile in pred_seg:

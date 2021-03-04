@@ -19,12 +19,12 @@ class EnsembleModel:
         return self.fsm.fixation_sequence
     
     def predict_current_segment(self, segment):
-        assert segment <= self.fsm.n_segments, f'segment {segment} out of range! (n_segments={self.fsm.n_segments})'
+        assert segment < self.fsm.n_segments, f'segment {segment} out of range! (n_segments={self.fsm.n_segments})'
         fsm_seq = list(self.fsm.fixation_sequence.loc[segment])
         return fsm_seq
     
     def predict_next_segment(self, segment, tile):
-        assert segment < self.fsm.n_segments, f'segment {segment} out of range! (n_segments={self.fsm.n_segments})'
+        assert segment < self.fsm.n_segments-1, f'segment {segment} out of range! (n_segments={self.fsm.n_segments})'
         tm_tile = self.tm.predict(segment, tile)
         fsm_seq = self.predict_current_segment(segment+1)
         if tm_tile in fsm_seq: # predicted tile from transition model is already in the predicted fixation sequence  
