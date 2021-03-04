@@ -1,14 +1,16 @@
 import os, re, pickle, sys
-from multiprocessing import Process, Manager, Queue
+# from multiprocessing import Process, Manager, Queue
+from threading import Thread
+from queue import Queue
 
 sys.path.append(r'./instance/')
 class PrefetchBufferHandler:
 
     def __init__(self, fn):
         print(f'__init__')
-        self.manager = Manager()
+        # self.manager = Manager()
         self.fn = fn
-        self.buffer = self.manager.dict()
+        self.buffer = dict()
         self.buffer_keys = Queue()
         self.buffer_keys_len = int(os.getenv("BUFFER_SIZE")) / int(os.getenv("BUFFER_SEQ_LENGTH"))
         self.prefetch_models = {
@@ -28,18 +30,16 @@ class PrefetchBufferHandler:
             resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
         else:
             resp = self.fn(*args)
-            prefetch_process_current = Process(
+            Thread(
                 target=self.prefetch,
                 args=(args, video, seg, tile),
-            )
-            prefetch_process_current.start()
+            ).start()
             # self.prefetch(args, video, seg, tile)
         if (video, seg+1) not in self.buffer:
-            prefetch_process_next = Process(
+            Thread(
                 target=self.prefetch,
                 args=(args, video, seg, tile, True),
-            )
-            prefetch_process_next.start()
+            ).start()
             # self.prefetch(args, video, seg, tile, next_segment=True)
         return resp
 
@@ -55,7 +55,8 @@ class PrefetchBufferHandler:
         if self.buffer_keys.qsize() >= self.buffer_keys_len:
             first_key = self.buffer_keys.get()
             del self.buffer[first_key]
-        self.buffer[(video, actual_segment)] = self.manager.dict()
+        # self.buffer[(video, actual_segment)] = self.manager.dict()
+        self.buffer[(video, actual_segment)] = dict()
         self.buffer_keys.put((video, actual_segment))
         pred_seg = self.prefetch_models[f'v{video}'].predict_next_segment(actual_segment - 1, tile) if next_segment else self.prefetch_models[f'v{video}'].predict_current_segment(actual_segment)
         # print(pred_seg)
