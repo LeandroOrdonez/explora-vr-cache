@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: cot-querying
+  name: explora-vr-cache
   labels:
-    app: cot-querying
+    app: explora-vr-cache
 spec:
   type: LoadBalancer
   ports:
@@ -11,4 +11,4 @@ spec:
      targetPort: 80
      nodePort: 30080
   selector:
-   app: cot-querying
+   app: explora-vr-cache

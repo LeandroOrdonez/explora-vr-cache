@@ -18,6 +18,6 @@ docker build:
     - master
   script:
     - docker info
-    - docker build -t gitlab.ilabt.imec.be:4567/lordezan/explora-vr-server .
-    - docker push gitlab.ilabt.imec.be:4567/lordezan/explora-vr-server:latest && docker image rm gitlab.ilabt.imec.be:4567/lordezan/explora-vr-server:latest
+    - docker build -t gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache .
+    - docker push gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache:latest && docker image rm gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache:latest
     
