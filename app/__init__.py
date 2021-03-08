@@ -16,7 +16,7 @@ from instance.config import app_config
 api_endpoint = ''
 
 # Set logger
-log_header = 'date|video|segment|tile|quality|run_time'
+log_header = 'date|video|quality|filename'
 logger = logging.getLogger(__name__)
 file_handler = FileHandler(filename=os.getenv('QUERY_LOG'), header=log_header, delay=True)
 formatter = logging.Formatter('%(asctime)s|%(message)s')
@@ -36,14 +36,15 @@ def create_app(config_name):
     t_vert = app.config['T_VERT']
     t_hor = app.config['T_HOR']
 
-    # /api/video/0/segment/0/tile/0?quality=5
+    # /0/4x4/4/seg_dash_track1_30.m4s
     @app.route(f'{api_endpoint}/<string:video_id>/{t_hor}x{t_vert}/<int:quality>/<string:filename>', methods=['GET'])
     def get_tile(video_id, quality, filename):
         print("[get_tile] method call")
         try:
             if int(quality) not in app.config["SUPPORTED_QUALITIES"]:
                 raise ValueError
-            tile_bytes = QHandler.get_video_tile(app.root_path, app.config["VIDEO_FILES_PATH"], t_hor, t_vert, video_id, quality, filename)
+            logger.info(f'{video_id}|{quality}|{filename}')
+            tile_bytes = QHandler.get_video_tile(t_hor, t_vert, video_id, quality, filename)
             # print('Sending File...')
             # return send_from_directory(directory, filename=filename)
             return send_file(tile_bytes, mimetype='video/iso.segment')

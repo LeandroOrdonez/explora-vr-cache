@@ -10,6 +10,9 @@ data:
   APP_SETTINGS: production
   QUERY_LOG: ./issued_queries.log
   ENABLE_PREFETCHING: true
+  BUFFER_SEQ_LENGTH: 5
+  BUFFER_SIZE: 20
+  SERVER_URL: "http://localhost:5000"
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment

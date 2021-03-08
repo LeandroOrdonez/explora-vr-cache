@@ -53,9 +53,9 @@ class PrefetchBufferHandler:
         return resp
 
     def get_video_segment_and_tile(self, args):
-        filename = args[6]
-        video = args[4]
-        quality = args[5]
+        filename = args[4]
+        video = args[2]
+        quality = args[3]
         tile, seg = re.findall(r'(\d+)\_(\d+).', filename)[0]
         return int(video), int(quality), int(tile), int(seg)
     
@@ -70,10 +70,15 @@ class PrefetchBufferHandler:
         pred_seg = self.prefetch_models[f'v{video}'].predict_next_segment(actual_segment - 1, tile - 1) if next_segment else self.prefetch_models[f'v{video}'].predict_current_segment(actual_segment)
         # print(pred_seg)
         for i_tile in pred_seg:
-            pred_args = list(args)
-            pred_args[4] = video
-            pred_args[6] = f'seg_dash_track{i_tile + 1}_{actual_segment + 1}.m4s'
-            self.buffer[(video, actual_segment + 1)][i_tile + 1] = self.fn(*tuple(pred_args))
+            Thread(
+                target=self.fetch_tile,
+                args=(i_tile, actual_segment, video, args)
+            ).start()
+            
         # print(f'[prefetch] Current buffer: {[(k, v.items()) for k, v in self.buffer.items()]}')
 
-
+    def fetch_tile(self, tile, segment, video, args):
+        tmp_args = list(args)
+        tmp_args[2] = video
+        tmp_args[4] = f'seg_dash_track{tile + 1}_{segment + 1}.m4s'
+        self.buffer[(video, segment + 1)][tile + 1] = self.fn(*tuple(tmp_args))

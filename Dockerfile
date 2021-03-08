@@ -6,6 +6,7 @@ ENV QUERY_LOG="./issued_queries.log"
 ENV ENABLE_PREFETCHING="true"
 ENV BUFFER_SEQ_LENGTH 5
 ENV BUFFER_SIZE 20
+ENV SERVER_URL "http://localhost:5000"
 
 ARG gid=www-data
 ARG uid=www-data
