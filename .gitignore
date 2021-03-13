@@ -5,3 +5,4 @@ venv/
 *.m4s
 __pycache__/
 .ipynb_checkpoints
+.vscode/

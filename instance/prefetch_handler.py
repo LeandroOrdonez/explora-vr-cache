@@ -39,11 +39,12 @@ class PrefetchBufferHandler:
                 resp = self.fn(*args)
         else:
             resp = self.fn(*args)
-            Thread(
-                target=self.prefetch,
-                args=(args, video, seg, tile),
-            ).start()
-            # self.prefetch(args, video, seg, tile)
+            if int(os.getenv("BUFFER_SEQ_LENGTH")) > 1:
+                Thread(
+                    target=self.prefetch,
+                    args=(args, video, seg, tile),
+                ).start()
+                # self.prefetch(args, video, seg, tile)
         if (video, seg+1) not in self.buffer:
             Thread(
                 target=self.prefetch,
