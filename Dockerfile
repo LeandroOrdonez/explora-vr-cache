@@ -5,8 +5,9 @@ ENV APP_SETTINGS="production"
 ENV QUERY_LOG="./issued_queries.log"
 ENV ENABLE_PREFETCHING="true"
 ENV BUFFER_SEQ_LENGTH 5
-ENV BUFFER_SIZE 20
+ENV BUFFER_SIZE 4
 ENV SERVER_URL "http://localhost:80"
+ENV PERFECT_PREDICTION "true"
 
 ARG gid=www-data
 ARG uid=www-data

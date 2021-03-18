@@ -11,8 +11,9 @@ data:
   QUERY_LOG: ./issued_queries.log
   ENABLE_PREFETCHING: true
   BUFFER_SEQ_LENGTH: 5
-  BUFFER_SIZE: 20
+  BUFFER_SIZE: 4
   SERVER_URL: "http://localhost:5000"
+  PERFECT_PREDICTION: true
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
