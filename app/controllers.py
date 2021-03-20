@@ -19,10 +19,10 @@ class QHandler():
 
     @staticmethod
     @PrefetchBufferHandler
-    def get_video_tile(t_hor, t_vert, video_id, quality, filename):
+    def get_video_tile(t_hor, t_vert, video_id, quality, filename, user_id=None):
         # print("[get_video_tile] method call")
-        SERVER_URL = os.getenv("SERVER_URL") if os.getenv("SERVER_URL") else "http://localhost:5000"
-        url = f'{SERVER_URL}/{video_id}/{t_hor}x{t_vert}/{quality}/{filename}'
+        server_url = os.getenv("SERVER_URL") if os.getenv("SERVER_URL") else "http://localhost:5000"
+        url = f'{server_url}/{video_id}/{t_hor}x{t_vert}/{quality}/{filename}'
         # print(f'directory={directory}')
         # m = re.search(r'track(.*)_(.*)\.m4s',tile_name)
         # filename = f'seg_dash_track{tile_id}_{segment_id}.m4s'
@@ -31,6 +31,6 @@ class QHandler():
         # print(f'filepath = {filepath}')
         # with open(filepath, 'rb') as fh:
         #     tile_bytes = BytesIO(fh.read())
-        query_string = f'k={int(os.getenv("BUFFER_SEQ_LENGTH"))}&prefetch={os.getenv("ENABLE_PREFETCHING") == "true"}'
+        query_string = f'k={int(os.getenv("BUFFER_SEQ_LENGTH"))}&prefetch={os.getenv("ENABLE_PREFETCHING") == "true"}&perfect_prediction={os.getenv("PERFECT_PREDICTION") == "true"}'
         tile_bytes = BytesIO(requests.get(f'{url}?{query_string}').content)
         return tile_bytes

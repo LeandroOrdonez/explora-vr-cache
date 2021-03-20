@@ -16,7 +16,7 @@ from instance.config import app_config
 api_endpoint = ''
 
 # Set logger
-log_header = 'date|video|quality|filename|k|prefetch'
+log_header = 'date|video|quality|filename|k|prefetch|perfect_prediction'
 logger = logging.getLogger(__name__)
 file_handler = FileHandler(filename=os.getenv('QUERY_LOG'), header=log_header, delay=True)
 formatter = logging.Formatter('%(asctime)s|%(message)s')
@@ -43,8 +43,9 @@ def create_app(config_name):
         try:
             if int(quality) not in app.config["SUPPORTED_QUALITIES"]:
                 raise ValueError
-            logger.info(f'{video_id}|{quality}|{filename}|{request.args.get("k")}|{request.args.get("prefetch")}')
-            tile_bytes = QHandler.get_video_tile(t_hor, t_vert, video_id, quality, filename)
+            logger.info(f'{video_id}|{quality}|{filename}|{request.args.get("k")}|{request.args.get("prefetch")}|{request.args.get("perfect_prediction")}')
+            user_id = int(request.args.get("user_id")) if request.args.get("user_id") else None
+            tile_bytes = QHandler.get_video_tile(t_hor, t_vert, video_id, quality, filename, user_id)
             # print('Sending File...')
             # return send_from_directory(directory, filename=filename)
             return send_file(tile_bytes, mimetype='video/iso.segment')

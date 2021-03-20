@@ -7,6 +7,7 @@ class Config(object):
     #SECRET = os.getenv('SECRET')
     VIDEO_CATALOG = ['0', '2', '4']
     # VIDEO_FILES_PATH = 'static/videos'
+    USER_TRACES_PATH = 'instance/traces_requests'
     SUPPORTED_QUALITIES = [1, 5] #list(range(1, 6))
     ENABLE_PREFETCHING = os.getenv('ENABLE_PREFETCHING') == 'true'
     T_VERT = 4
