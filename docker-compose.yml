@@ -1,0 +1,33 @@
+version: "3"
+services:
+
+  explora_vr_cache:
+    image: gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache:latest
+    container_name: "explora_vr_cache"
+    environment:
+      - FLASK_APP="run.py"
+      - APP_SETTINGS="production"
+      - QUERY_LOG="./issued_queries.log"
+      - ENABLE_PREFETCHING="true"
+      - BUFFER_SEQ_LENGTH=-1
+      - BUFFER_SIZE=4
+      - SERVER_URL="explora_vr_server:80"
+      - PERFECT_PREDICTION="true"
+    ports:
+      - "88:88"
+    links:
+      - explora_vr_server
+    command: ./start.sh
+
+  explora_vr_server:
+    image: gitlab.ilabt.imec.be:4567/lordezan/explora-vr-server:latest
+    container_name: "explora_vr_server"
+    environment:
+      - FLASK_APP="run.py"
+      - APP_SETTINGS="production"
+      - QUERY_LOG="./issued_queries.log"
+    volumes:
+      - ../explora-vr-server/app/static:/app/app/static:ro
+    ports:
+        - 80:80
+    command: ./start.sh
