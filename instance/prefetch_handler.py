@@ -148,7 +148,7 @@ class PrefetchBufferHandler:
                 user_traces[int(video)][user] = {}
                 user_df = pd.read_csv(f'{Config.USER_TRACES_PATH}/{video}/queries_u{user}.txt', names=['segment', 'tile', 'viewport', 'url'])
                 for segment, df in user_df.groupby('segment'):
-                    vp_tiles = df[df['viewport'] == True]['tile'].tolist()
+                    vp_tiles = df[df['viewport'] == True]['tile'].tolist() if int(os.getenv("BUFFER_SEQ_LENGTH")) < 0 else df['tile'].tolist()[:int(os.getenv("BUFFER_SEQ_LENGTH"))]
                     user_traces[int(video)][user][segment] = vp_tiles
         return user_traces
 

@@ -10,7 +10,7 @@ services:
       - APP_SETTINGS=production
       - QUERY_LOG=./issued_queries.log
       - ENABLE_PREFETCHING=true
-      - BUFFER_SEQ_LENGTH=-1
+      - BUFFER_SEQ_LENGTH=4
       - BUFFER_SIZE=4
       - SERVER_URL=http://explora_vr_server:80
       - PERFECT_PREDICTION=true
