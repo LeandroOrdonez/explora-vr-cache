@@ -61,7 +61,7 @@ class PrefetchBufferHandler:
             
     def run_prefetch(self, video, tile, segment, user_id, args):
         # Prefetch current segment
-        if (video, segment) not in self.buffer and (int(os.getenv("BUFFER_SEQ_LENGTH")) > 1):
+        if ((video, segment) not in self.buffer) and ((video, segment) not in self.init_buffer): #(int(os.getenv("BUFFER_SEQ_LENGTH")) > 1):
             Thread(
                 target=self.prefetch_segment,
                 args=(args, video, segment, tile, False, user_id),
