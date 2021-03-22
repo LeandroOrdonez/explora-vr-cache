@@ -5,6 +5,8 @@ import numpy as np
 from threading import Thread
 from queue import Queue
 from instance.config import Config
+from util.redis_queue import RedisQueue
+from redis import Redis
 
 sys.path.append(r'./instance/')
 class PrefetchBufferHandler:
@@ -13,12 +15,13 @@ class PrefetchBufferHandler:
         print(f'__init__')
         # self.manager = Manager()
         self.fn = fn
-        self.buffer = dict()
-        self.init_buffer = dict() # It buffers the first segments of all videos in the catalog and keeps them in memory
-        self.buffer_keys = Queue()
+        self.buffer = Redis(host=os.getenv("REDIS_HOST"), db=0)
+        self.init_buffer = Redis(host=os.getenv("REDIS_HOST"), db=1) # It buffers the first segments of all videos in the catalog and keeps them in memory
+        self.counters = Redis(host=os.getenv("REDIS_HOST"), db=2) # It buffers the first segments of all videos in the catalog and keeps them in memory
+        self.buffer_keys = RedisQueue('buffer_keys', host=os.getenv("REDIS_HOST"), db=3)
         self.buffer_keys_len = int(os.getenv("BUFFER_SIZE"))
-        self.n_queries = 0
-        self.n_hits = 0
+        # self.n_queries = 0
+        # self.n_hits = 0
         if os.getenv('PERFECT_PREDICTION') == 'true':
             for video in Config.VIDEO_CATALOG:
                 args = (Config.T_HOR, Config.T_VERT, video, Config.SUPPORTED_QUALITIES[-1], 'seg_dash_trackX_X.m4s') # Only important elements from this tuple at initialization are T_VER, T_HOR and the video ID, the rest are placeholders, basically 
@@ -36,7 +39,7 @@ class PrefetchBufferHandler:
 
     def __call__(self, *args):
         # print(f'[Prefetch_Handler] __call__ with args: {args}')
-        self.n_queries += 1
+        n_queries = self.counters.incr('n_queries')
         # print(f'[Prefetch_Handler] Current buffer: {self.buffer.keys()}')
         if(os.getenv('ENABLE_PREFETCHING') == 'false'):
             return self.fn(*args)
@@ -46,28 +49,29 @@ class PrefetchBufferHandler:
             target=self.run_prefetch,
             args=(video, tile, seg, user_id, args)
         ).start()
-        if ((video, seg) in self.init_buffer) and ((tile, quality) in self.init_buffer[(video, seg)]):
+        tile_key = f'{video}:{seg}:{tile}:{quality}'
+        if self.init_buffer.exists(tile_key):
             # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
-            self.n_hits += 1
-            print(f'[Prefetch_Handler] hit-ratio: {self.n_hits}/{self.n_queries} = {round((self.n_hits/self.n_queries)*100, 2)}%')
-            return self.init_buffer[(video, seg)][(tile, quality)]
-        elif ((video, seg) in self.buffer) and ((tile, quality) in self.buffer[(video, seg)]):
+            n_hits = self.counters.incr('n_hits')
+            print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
+            return self.init_buffer.get(tile_key)
+        elif self.buffer.exists(tile_key):
             # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
-            self.n_hits += 1
-            print(f'[Prefetch_Handler] hit-ratio: {self.n_hits}/{self.n_queries} = {round((self.n_hits/self.n_queries)*100, 2)}%')
-            return self.buffer[(video, seg)][(tile, quality)]
+            n_hits = self.counters.incr('n_hits')
+            print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
+            return self.buffer.get(tile_key)
         else:
             return self.fn(*args)
             
     def run_prefetch(self, video, tile, segment, user_id, args):
         # Prefetch current segment
-        if ((video, segment) not in self.buffer) and ((video, segment) not in self.init_buffer): #(int(os.getenv("BUFFER_SEQ_LENGTH")) > 1):
+        if not (self.buffer.keys(f'{video}:{segment}:*') or self.init_buffer.keys(f'{video}:{segment}:*')): #(int(os.getenv("BUFFER_SEQ_LENGTH")) > 1):
             Thread(
                 target=self.prefetch_segment,
                 args=(args, video, segment, tile, False, user_id),
             ).start()
         # Prefetch next segment
-        if (video, segment + 1) not in self.buffer:
+        if not self.buffer.keys(f'{video}:{segment + 1}:*'):
             Thread(
                 target=self.prefetch_segment,
                 args=(args, video, segment, tile, True, user_id),
@@ -82,7 +86,7 @@ class PrefetchBufferHandler:
         return int(video), int(quality), int(tile), int(seg), user_id
     
     def prefetch_segment_into_init_buffer(self, args, video, segment, tile):
-        self.init_buffer[(video, segment + 1)] = dict()
+        # self.init_buffer[(video, segment + 1)] = dict()
         for i_tile in range(Config.T_VERT*Config.T_HOR):
             for q_index in Config.SUPPORTED_QUALITIES:
                 # print(f"PREFETCHING TILE {i_tile + 1} Q{q_index} FROM SEGMENT {actual_segment + 1} VIDEO {video}")
@@ -96,11 +100,10 @@ class PrefetchBufferHandler:
         # Tiles and Segments in the predictive model are zero-indexed
         actual_segment = segment - 1 if not next_segment else segment
         if self.buffer_keys.qsize() >= self.buffer_keys_len:
-            first_key = self.buffer_keys.get()
-            del self.buffer[first_key]
-        # self.buffer[(video, actual_segment)] = self.manager.dict()
-        self.buffer[(video, actual_segment + 1)] = dict()
-        self.buffer_keys.put((video, actual_segment + 1))
+            first_key = self.buffer_keys.get().decode('utf-8')
+            self.remove_segment_from_buffer(first_key)
+        # self.buffer[(video, actual_segment + 1)] = dict()
+        self.buffer_keys.put(f'{video}:{actual_segment + 1}')
         if os.getenv('PERFECT_PREDICTION') == 'true':
             if user_id:
                 # print("TODO: prefetch for specific users with perfect prediction")
@@ -136,9 +139,9 @@ class PrefetchBufferHandler:
         tmp_args[3] = quality
         tmp_args[4] = f'seg_dash_track{tile + 1}_{segment + 1}.m4s'
         if into_init_buffer:
-            self.init_buffer[(video, segment + 1)][(tile + 1, quality)] = self.fn(*tuple(tmp_args))
+            self.init_buffer.set(f'{video}:{segment+ 1}:{tile + 1}:{quality}', self.fn(*tuple(tmp_args)))
         else:
-            self.buffer[(video, segment + 1)][(tile + 1, quality)] = self.fn(*tuple(tmp_args))
+            self.buffer.set(f'{video}:{segment+ 1}:{tile + 1}:{quality}', self.fn(*tuple(tmp_args)))
 
     def load_user_traces(self):
         user_traces = {}
@@ -151,4 +154,8 @@ class PrefetchBufferHandler:
                     vp_tiles = df[df['viewport'] == True]['tile'].tolist() if int(os.getenv("BUFFER_SEQ_LENGTH")) < 0 else df['tile'].tolist()[:int(os.getenv("BUFFER_SEQ_LENGTH"))]
                     user_traces[int(video)][user][segment] = vp_tiles
         return user_traces
+
+    def remove_segment_from_buffer(self, key):
+        keys = self.buffer.keys(f'{key}:*')
+        self.buffer.delete(*keys)
 

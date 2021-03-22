@@ -8,6 +8,7 @@ ENV BUFFER_SEQ_LENGTH=-1
 ENV BUFFER_SIZE=4
 ENV SERVER_URL="http://localhost:80"
 ENV PERFECT_PREDICTION="true"
+ENV REDIS_HOST="localhost"
 ENV ENABLE_TC="false"
 ENV BANDWIDTH="25Mbps"
 ENV LATENCY="15ms"
@@ -33,6 +34,7 @@ RUN pip install -r requirements.txt --src /usr/local/src
 # RUN tc qdisc add dev lo parent 1:12 netem delay ${LATENCY} ${JITTER} distribution normal
 
 COPY nginx.conf /etc/nginx
+RUN chmod +x ./traffic-control.sh
 RUN chmod +x ./start.sh
 CMD ["./start.sh"]
 #CMD ["flask", "run", "--host", "0.0.0.0"]

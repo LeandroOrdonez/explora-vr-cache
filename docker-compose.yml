@@ -11,9 +11,11 @@ services:
       - QUERY_LOG=./issued_queries.log
       - ENABLE_PREFETCHING=true
       - BUFFER_SEQ_LENGTH=4
-      - BUFFER_SIZE=4
+      - BUFFER_SIZE=20
       - SERVER_URL=http://explora_vr_server:80
+      - SERVER_IP=explora_vr_server
       - PERFECT_PREDICTION=true
+      - REDIS_HOST=redis
       - ENABLE_TC=true
       - BANDWIDTH=12Mbps
       - LATENCY=15ms
@@ -22,6 +24,7 @@ services:
       - "88:88"
     depends_on:
       - explora_vr_server
+      - redis
     cap_add:
       - NET_ADMIN
     command: ./start.sh
@@ -45,3 +48,9 @@ services:
     cap_add:
       - NET_ADMIN
     command: ./start.sh
+
+  redis:
+    image: "redis:alpine"
+    container_name: "redis"
+    ports:
+        - 6379:6379

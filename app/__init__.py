@@ -48,7 +48,7 @@ def create_app(config_name):
             tile_bytes = QHandler.get_video_tile(t_hor, t_vert, video_id, quality, filename, user_id)
             # print('Sending File...')
             # return send_from_directory(directory, filename=filename)
-            return send_file(tile_bytes, mimetype='video/iso.segment')
+            return send_file(BytesIO(tile_bytes), mimetype='video/iso.segment')
         except Exception as e:
             print('[ERROR]', e)
             traceback.print_exc()

@@ -32,5 +32,5 @@ class QHandler():
         # with open(filepath, 'rb') as fh:
         #     tile_bytes = BytesIO(fh.read())
         query_string = f'k={int(os.getenv("BUFFER_SEQ_LENGTH"))}&prefetch={os.getenv("ENABLE_PREFETCHING") == "true"}&perfect_prediction={os.getenv("PERFECT_PREDICTION") == "true"}'
-        tile_bytes = BytesIO(requests.get(f'{url}?{query_string}').content)
+        tile_bytes = requests.get(f'{url}?{query_string}').content
         return tile_bytes
