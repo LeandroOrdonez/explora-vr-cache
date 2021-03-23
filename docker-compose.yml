@@ -13,13 +13,13 @@ services:
       - BUFFER_SEQ_LENGTH=4
       - BUFFER_SIZE=20
       - SERVER_URL=http://explora_vr_server:80
-      - SERVER_IP=explora_vr_server
+      - SERVER_HOST=explora_vr_server
       - PERFECT_PREDICTION=true
       - REDIS_HOST=redis
-      - ENABLE_TC=true
+      - ENABLE_TC=false
       - BANDWIDTH=12Mbps
-      - LATENCY=15ms
-      - JITTER=1.5ms
+      - LATENCY=15
+      - JITTER=2
     ports:
       - "88:88"
     depends_on:
@@ -37,7 +37,7 @@ services:
       - FLASK_APP=run.py
       - APP_SETTINGS=production
       - QUERY_LOG=./issued_queries.log
-      - ENABLE_TC=true
+      - ENABLE_TC=false
       - BANDWIDTH=12Mbps
       - LATENCY=15ms
       - JITTER=1.5ms

@@ -26,7 +26,7 @@ RUN chown -R ${uid}:${gid} /app
 RUN apt-get clean \
     && apt-get update 
     
-RUN apt-get install -y nginx gcc g++ proj-bin libproj-dev libgeos-dev openssh-server libspatialindex-dev libpq-dev htop build-essential python-dev python3-dev  iproute2 inetutils-ping
+RUN apt-get install -y nginx gcc g++ proj-bin libproj-dev libgeos-dev openssh-server libspatialindex-dev libpq-dev htop build-essential python-dev python3-dev iproute2 inetutils-ping kmod
 RUN pip install -r requirements.txt --src /usr/local/src
 
 # RUN tc qdisc add dev lo root handle 1: htb default 12

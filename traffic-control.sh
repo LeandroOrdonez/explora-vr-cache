@@ -18,13 +18,14 @@ function show_usage {
     echo "Bandwidth Control using TC"
     echo "Version: $VERSION | Author: ole1986"
     echo
-    echo "Usage: $1 [-r|--remove] [-i|--incoming] [-o|--outgoing] [-d|--delay=] [--uspeed=] [--dspeed=] <IP>"
+    echo "Usage: $1 [-r|--remove] [-i|--incoming] [-o|--outgoing] [-d|--delay=] [-j|--jitter=] [--uspeed=] [--dspeed=] <IP>"
     echo
     echo "Arguments:"
     echo "  -r|--remove     : removes all traffic control being set"
     echo "  -i|--incoming   : limit the bandwidth only for incoming packetes"
     echo "  -o|--outgoing   : limit the bandwidth only for outgoing packetes"
     echo "  -d|--delay=700  : define the latency in milliseconds (default: 700)"
+    echo "  -j|--jitter=70  : define the jitter in milliseconds (default: 70)"
     echo "  --uspeed=<speed>: define the upload speed (default: 128kbit)"
     echo "  --dspeed=<speed>: define the download speed (default: 128kbit)"
     echo "  <IP>            : the ip address to limit the traffic for"
@@ -63,11 +64,15 @@ function tc_outgoing {
 
     echo "- upload speed $SPEED_UPLOAD"
     $TCC dev $INTERFACE parent 1: classid 1:1 htb rate $SPEED_UPLOAD
-    if [ $DELAY -gt 0 ]; then
+    if [ "$DELAY" -gt 0 ]; then
         TCN="tc qdisc add"
         [[ $(tc qdisc |grep '^qdisc netem 10:') ]] && TCN="tc qdisc change"
         echo "- latency ${DELAY}ms"
-        $TCN dev $INTERFACE parent 1:1 handle 10: netem delay ${DELAY}ms
+        if [ "$JITTER" -gt 0 ]; then
+            $TCN dev $INTERFACE parent 1:1 handle 10: netem delay ${DELAY}ms ${JITTER}ms distribution normal
+        else
+            $TCN dev $INTERFACE parent 1:1 handle 10: netem delay ${DELAY}ms
+        fi
     fi
 
     # Match ip and put it into the respective class
@@ -102,12 +107,16 @@ function tc_incoming {
     echo "- download speed $SPEED_DOWNLOAD"
     $TCC dev $VIRTUAL parent 2: classid 2:1 htb rate $SPEED_DOWNLOAD
 
-    if [ $DELAY -gt 0 ]; then
+    if [ "$DELAY" -gt 0 ]; then
         TCN="tc qdisc add"
         [[ $(tc qdisc |grep '^qdisc netem 20:') ]] && TCN="tc qdisc change"
 
         echo "- latency ${DELAY}ms"
-        $TCN dev $VIRTUAL parent 2:1 handle 20: netem delay ${DELAY}ms
+        if [ "$JITTER" -gt 0 ]; then
+            $TCN dev $VIRTUAL parent 2:1 handle 20: netem delay ${DELAY}ms ${JITTER}ms distribution normal
+        else
+            $TCN dev $VIRTUAL parent 2:1 handle 20: netem delay ${DELAY}ms
+        fi
     fi
 
     echo "- filter on IP $ADDRESS"
@@ -141,6 +150,10 @@ case $i in
     ;;
     -d=*|--delay=*)
     DELAY=${i#*=}
+    shift
+    ;;
+    -j=*|--jitter=*)
+    JITTER=${i#*=}
     shift
     ;;
     --uspeed=*)
