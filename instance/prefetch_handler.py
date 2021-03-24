@@ -19,6 +19,7 @@ class PrefetchBufferHandler:
         self.init_buffer = Redis(host=os.getenv("REDIS_HOST"), db=1) # It buffers the first segments of all videos in the catalog and keeps them in memory
         self.counters = Redis(host=os.getenv("REDIS_HOST"), db=2) # It buffers the first segments of all videos in the catalog and keeps them in memory
         self.buffer_keys = RedisQueue('buffer_keys', host=os.getenv("REDIS_HOST"), db=3)
+        self.init_buffer_keys = RedisQueue('init_buffer_keys', host=os.getenv("REDIS_HOST"), db=3)
         self.buffer_keys_len = int(os.getenv("BUFFER_SIZE"))
         # self.n_queries = 0
         # self.n_hits = 0
@@ -65,13 +66,13 @@ class PrefetchBufferHandler:
             
     def run_prefetch(self, video, tile, segment, user_id, args):
         # Prefetch current segment
-        if not (self.buffer.keys(f'{video}:{segment}:*') or self.init_buffer.keys(f'{video}:{segment}:*')): #(int(os.getenv("BUFFER_SEQ_LENGTH")) > 1):
+        if not (self.buffer_keys.contains(f'{video}:{segment}') or self.init_buffer_keys.contains(f'{video}:{segment}')): #(int(os.getenv("BUFFER_SEQ_LENGTH")) > 1):
             Thread(
                 target=self.prefetch_segment,
                 args=(args, video, segment, tile, False, user_id),
             ).start()
         # Prefetch next segment
-        if not self.buffer.keys(f'{video}:{segment + 1}:*'):
+        if not self.buffer_keys.contains(f'{video}:{segment + 1}'):
             Thread(
                 target=self.prefetch_segment,
                 args=(args, video, segment, tile, True, user_id),
@@ -87,6 +88,7 @@ class PrefetchBufferHandler:
     
     def prefetch_segment_into_init_buffer(self, args, video, segment, tile):
         # self.init_buffer[(video, segment + 1)] = dict()
+        self.init_buffer_keys.put(f'{video}:{segment + 1}')
         for i_tile in range(Config.T_VERT*Config.T_HOR):
             for q_index in Config.SUPPORTED_QUALITIES:
                 # print(f"PREFETCHING TILE {i_tile + 1} Q{q_index} FROM SEGMENT {actual_segment + 1} VIDEO {video}")
