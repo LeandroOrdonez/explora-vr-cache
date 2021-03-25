@@ -23,13 +23,13 @@ class PrefetchBufferHandler:
         self.buffer_keys_len = int(os.getenv("BUFFER_SIZE"))
         # self.n_queries = 0
         # self.n_hits = 0
+        for video in Config.VIDEO_CATALOG:
+            args = (Config.T_HOR, Config.T_VERT, video, Config.SUPPORTED_QUALITIES[-1], 'seg_dash_trackX_X.m4s') # Only important elements from this tuple at initialization are T_VER, T_HOR and the video ID, the rest are placeholders, basically 
+            Thread(
+                target=self.prefetch_segment_into_init_buffer,
+                args=(args, int(video), 0, 0),
+            ).start()
         if os.getenv('PERFECT_PREDICTION') == 'true':
-            for video in Config.VIDEO_CATALOG:
-                args = (Config.T_HOR, Config.T_VERT, video, Config.SUPPORTED_QUALITIES[-1], 'seg_dash_trackX_X.m4s') # Only important elements from this tuple at initialization are T_VER, T_HOR and the video ID, the rest are placeholders, basically 
-                Thread(
-                    target=self.prefetch_segment_into_init_buffer,
-                    args=(args, int(video), 0, 0),
-                ).start()
             self.user_traces = self.load_user_traces()
         else:
             self.prefetch_models = {
@@ -51,6 +51,7 @@ class PrefetchBufferHandler:
             args=(video, tile, seg, user_id, args)
         ).start()
         tile_key = f'{video}:{seg}:{tile}:{quality}'
+        hq_tile_key = f'{video}:{seg}:{tile}:{Config.SUPPORTED_QUALITIES[-1]}'
         if self.init_buffer.exists(tile_key):
             # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
             n_hits = self.counters.incr('n_hits')
@@ -61,6 +62,12 @@ class PrefetchBufferHandler:
             n_hits = self.counters.incr('n_hits')
             print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
             return self.buffer.get(tile_key)
+        # If LQ tile requested, but HQ version in buffer then return HQ tile
+        elif quality == Config.SUPPORTED_QUALITIES[0] and self.buffer.exists(hq_tile_key): # If LQ tile requested, but HQ version in buffer then return HQ
+             # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
+            n_hits = self.counters.incr('n_hits')
+            print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
+            return self.buffer.get(hq_tile_key)
         else:
             return self.fn(*args)
             
@@ -108,7 +115,6 @@ class PrefetchBufferHandler:
         self.buffer_keys.put(f'{video}:{actual_segment + 1}')
         if os.getenv('PERFECT_PREDICTION') == 'true':
             if user_id:
-                # print("TODO: prefetch for specific users with perfect prediction")
                 vp_tiles = np.array(self.user_traces[video][user_id][actual_segment + 1]) - 1 # offset for zero-indexing 
                 pred_tiles = [(t, Config.SUPPORTED_QUALITIES[-1] if t in vp_tiles else Config.SUPPORTED_QUALITIES[0]) for t in range(Config.T_HOR*Config.T_VERT)]
                 for (i_tile, q_index) in pred_tiles:
@@ -126,11 +132,13 @@ class PrefetchBufferHandler:
                         ).start()
         else:
             pred_seg = self.prefetch_models[f'v{video}'].predict_next_segment(actual_segment - 1, tile - 1) if next_segment else self.prefetch_models[f'v{video}'].predict_current_segment(actual_segment)
-            # print(pred_seg)
-            for i_tile in pred_seg:
+            pred_tiles = [(t, Config.SUPPORTED_QUALITIES[-1] if t in pred_seg else Config.SUPPORTED_QUALITIES[0]) for t in range(Config.T_HOR*Config.T_VERT)]
+            # Prefetch LQ tiles only:
+            # pred_tiles = [(t, Config.SUPPORTED_QUALITIES[0]) for t in range(Config.T_HOR*Config.T_VERT)]
+            for (i_tile, q_index) in pred_tiles:
                 Thread(
                     target=self.fetch_tile,
-                    args=(i_tile, actual_segment, video, Config.SUPPORTED_QUALITIES[-1], args)
+                    args=(i_tile, actual_segment, video, q_index, args)
                 ).start()
                 
             # print(f'[prefetch] Current buffer: {[(k, v.items()) for k, v in self.buffer.items()]}')
