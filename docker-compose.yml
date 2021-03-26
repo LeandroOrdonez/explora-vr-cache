@@ -10,7 +10,7 @@ services:
       - APP_SETTINGS=production
       - QUERY_LOG=./issued_queries.log
       - ENABLE_PREFETCHING=true
-      - BUFFER_SEQ_LENGTH=4
+      - VIEWPORT_SIZE=4
       - BUFFER_SIZE=10
       - SERVER_URL=http://explora_vr_server:80
       - SERVER_HOST=explora_vr_server
