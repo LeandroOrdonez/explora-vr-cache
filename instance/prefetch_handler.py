@@ -32,23 +32,23 @@ class PrefetchBufferHandler:
         if os.getenv('PERFECT_PREDICTION') == 'true':
             self.user_traces = self.load_user_traces()
         else:
-            self.prefetch_models = {
-                'v0': pickle.load(open(f'./instance/model_files/full_data/em_v0_k16.pkl','rb')),
-                'v2': pickle.load(open(f'./instance/model_files/full_data/em_v2_k16.pkl','rb')),
-                'v4': pickle.load(open(f'./instance/model_files/full_data/em_v4_k16.pkl','rb'))
-            }
-
+            self.prefetch_models = {}
+            for v in Config.VIDEO_CATALOG:
+                self.prefetch_models[f'v{v}'] = {}
+                for fold in range(1,9):
+                    self.prefetch_models[f'v{v}'][f'f{fold}'] = pickle.load(open(f'./instance/model_files/fold_{fold}/em_v{v}_k16.pkl','rb'))
+                    
     def __call__(self, *args):
         # print(f'[Prefetch_Handler] __call__ with args: {args}')
         n_queries = self.counters.incr('n_queries')
         # print(f'[Prefetch_Handler] Current buffer: {self.buffer.keys()}')
         if(os.getenv('ENABLE_PREFETCHING') == 'false'):
             return self.fn(*args)
-        video, quality, tile, seg, vp_size, user_id = self.get_video_segment_and_tile(args)
+        video, quality, tile, seg, vp_size, user_id, fold = self.get_video_segment_and_tile(args)
         # resp = None
         Thread(
             target=self.run_prefetch,
-            args=(video, tile, seg, vp_size, user_id, args)
+            args=(video, tile, seg, vp_size, user_id, fold, args)
         ).start()
         tile_key = f'{video}:{seg}:{tile}:{quality}'
         hq_tile_key = f'{video}:{seg}:{tile}:{Config.SUPPORTED_QUALITIES[-1]}'
@@ -71,18 +71,18 @@ class PrefetchBufferHandler:
         else:
             return self.fn(*args)
             
-    def run_prefetch(self, video, tile, segment, vp_size, user_id, args):
+    def run_prefetch(self, video, tile, segment, vp_size, user_id, fold, args):
         # Prefetch current segment
         if not (self.buffer_keys.contains(f'{video}:{segment}') or self.init_buffer_keys.contains(f'{video}:{segment}')): #(int(os.getenv("VIEWPORT_SIZE")) > 1):
             Thread(
                 target=self.prefetch_segment,
-                args=(args, video, segment, tile, vp_size, False, user_id),
+                args=(args, video, segment, tile, vp_size, False, user_id, fold),
             ).start()
         # Prefetch next segment
         if not self.buffer_keys.contains(f'{video}:{segment + 1}'):
             Thread(
                 target=self.prefetch_segment,
-                args=(args, video, segment, tile, vp_size, True, user_id),
+                args=(args, video, segment, tile, vp_size, True, user_id, fold),
             ).start()
 
     def get_video_segment_and_tile(self, args):
@@ -91,8 +91,9 @@ class PrefetchBufferHandler:
         quality = args[3]
         vp_size = args[5]
         user_id = args[6]
+        fold = args[7]
         tile, seg = re.findall(r'(\d+)\_(\d+).', filename)[0]
-        return int(video), int(quality), int(tile), int(seg), int(vp_size), user_id
+        return int(video), int(quality), int(tile), int(seg), int(vp_size), user_id, int(fold)
     
     def prefetch_segment_into_init_buffer(self, args, video, segment, tile):
         # self.init_buffer[(video, segment + 1)] = dict()
@@ -106,7 +107,7 @@ class PrefetchBufferHandler:
                 ).start()
 
 
-    def prefetch_segment(self, args, video, segment, tile, vp_size, next_segment=False, user_id=None):
+    def prefetch_segment(self, args, video, segment, tile, vp_size, next_segment=False, user_id=None, fold=1):
         # Tiles and Segments in the predictive model are zero-indexed
         actual_segment = segment - 1 if not next_segment else segment
         if self.buffer_keys.qsize() >= self.buffer_keys_len:
@@ -133,7 +134,7 @@ class PrefetchBufferHandler:
                         ).start()
         else:
             # Predict VP tiles (HQ tiles)
-            pred_seg = self.prefetch_models[f'v{video}'].predict_next_segment(actual_segment - 1, tile - 1)[:vp_size] if next_segment else self.prefetch_models[f'v{video}'].predict_current_segment(actual_segment)[:vp_size]
+            pred_seg = self.prefetch_models[f'v{video}'][f'f{fold}'].predict_next_segment(actual_segment - 1, tile - 1)[:vp_size] if next_segment else self.prefetch_models[f'v{video}'][f'f{fold}'].predict_current_segment(actual_segment)[:vp_size]
             pred_tiles = [(t, Config.SUPPORTED_QUALITIES[-1] if t in pred_seg else Config.SUPPORTED_QUALITIES[0]) for t in range(Config.T_HOR*Config.T_VERT)]
             # Prefetch LQ tiles only:
             # pred_tiles = [(t, Config.SUPPORTED_QUALITIES[0]) for t in range(Config.T_HOR*Config.T_VERT)]

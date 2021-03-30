@@ -46,9 +46,10 @@ def create_app(config_name):
             logger.info(f'{video_id}|{quality}|{filename}|{request.args.get("k")}|{request.args.get("prefetch")}|{request.args.get("perfect_prediction")}')
             user_id = int(request.args.get("user_id")) if request.args.get("user_id") else None
             vp_size = int(request.args.get("k")) if request.args.get("k") else 4
+            fold = int(request.args.get("fold")) if request.args.get("fold") else 1
             if vp_size > t_hor*t_vert or vp_size > t_hor*t_vert:
                 raise ValueError(f'Viewport size value ({vp_size}) is not valid (0 < vp size <= {t_hor*t_vert})')
-            tile_bytes = QHandler.get_video_tile(t_hor, t_vert, video_id, quality, filename, vp_size, user_id)
+            tile_bytes = QHandler.get_video_tile(t_hor, t_vert, video_id, quality, filename, vp_size, user_id, fold)
             # print('Sending File...')
             # return send_from_directory(directory, filename=filename)
             return send_file(BytesIO(tile_bytes), mimetype='video/iso.segment')
