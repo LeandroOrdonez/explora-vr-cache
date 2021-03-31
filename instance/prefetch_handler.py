@@ -32,11 +32,9 @@ class PrefetchBufferHandler:
         if os.getenv('PERFECT_PREDICTION') == 'true':
             self.user_traces = self.load_user_traces()
         else:
-            self.prefetch_models = {
-                'v0': pickle.load(open(f'./instance/model_files/full_data/em_v0_k16.pkl','rb')),
-                'v2': pickle.load(open(f'./instance/model_files/full_data/em_v2_k16.pkl','rb')),
-                'v4': pickle.load(open(f'./instance/model_files/full_data/em_v4_k16.pkl','rb'))
-            }
+            self.prefetch_models = {}
+            for v in Config.VIDEO_CATALOG:
+                self.prefetch_models[f'v{v}'] = pickle.load(open(f'./instance/model_files/full_data/em_v{v}_th90.pkl','rb'))
 
     def __call__(self, *args):
         # print(f'[Prefetch_Handler] __call__ with args: {args}')
@@ -133,7 +131,9 @@ class PrefetchBufferHandler:
                         ).start()
         else:
             # Predict VP tiles (HQ tiles)
-            pred_seg = self.prefetch_models[f'v{video}'].predict_next_segment(actual_segment - 1, tile - 1)[:vp_size] if next_segment else self.prefetch_models[f'v{video}'].predict_current_segment(actual_segment)[:vp_size]
+            pred_seg = self.prefetch_models[f'v{video}'].predict_next_segment(actual_segment - 1, tile - 1) if next_segment else self.prefetch_models[f'v{video}'].predict_current_segment(actual_segment)
+            if vp_size > 0:
+                pred_seg = pred_seg[:vp_size]
             pred_tiles = [(t, Config.SUPPORTED_QUALITIES[-1] if t in pred_seg else Config.SUPPORTED_QUALITIES[0]) for t in range(Config.T_HOR*Config.T_VERT)]
             # Prefetch LQ tiles only:
             # pred_tiles = [(t, Config.SUPPORTED_QUALITIES[0]) for t in range(Config.T_HOR*Config.T_VERT)]
