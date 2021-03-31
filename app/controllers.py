@@ -19,7 +19,7 @@ class QHandler():
 
     @staticmethod
     @PrefetchBufferHandler
-    def get_video_tile(t_hor, t_vert, video_id, quality, filename, vp_size=-1, user_id=None):
+    def get_video_tile(t_hor, t_vert, video_id, quality, filename, vp_size=4, user_id=None, fold=1):
         # print("[get_video_tile] method call")
         server_url = os.getenv("SERVER_URL") if os.getenv("SERVER_URL") else "http://localhost:5000"
         url = f'{server_url}/{video_id}/{t_hor}x{t_vert}/{quality}/{filename}'
@@ -31,6 +31,6 @@ class QHandler():
         # print(f'filepath = {filepath}')
         # with open(filepath, 'rb') as fh:
         #     tile_bytes = BytesIO(fh.read())
-        query_string = f'k={vp_size}&prefetch={os.getenv("ENABLE_PREFETCHING") == "true"}&perfect_prediction={os.getenv("PERFECT_PREDICTION") == "true"}'
+        query_string = f'k={vp_size}&fold={fold}&prefetch={os.getenv("ENABLE_PREFETCHING") == "true"}&perfect_prediction={os.getenv("PERFECT_PREDICTION") == "true"}'
         tile_bytes = requests.get(f'{url}?{query_string}').content
         return tile_bytes
