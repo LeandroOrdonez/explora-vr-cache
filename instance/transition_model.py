@@ -38,17 +38,18 @@ class TransitionModel:
     def predict_proba(self, segment, tile):
         if segment >= self.n_segments - 1:
             return ([np.nan], [np.nan])
-        top_2 = self.conf_mats[int(segment)].iloc[int(tile),:].nlargest(2)
-        if not top_2.empty:
-            if all(top_2.duplicated(keep=False)): # If the two top tiles have the same probability of occuring
-                if self.transition_probs[int(segment)] < 0.5: 
-                    return ([tile], [1 - self.transition_probs[int(segment)]])
+        if self.transition_probs[int(segment)] >= 0.5: # High probability of moving to a different tile
+            top_2 = self.conf_mats[int(segment)].iloc[int(tile),:].nlargest(2)
+            if not top_2.empty:
+                if all(top_2.duplicated(keep=False)): # If the two top tiles have the same probability of occuring
+                    if self.transition_probs[int(segment)] < 0.5: 
+                        return ([tile], [1 - self.transition_probs[int(segment)]])
+                    else:
+                        return ([int(top_2.index[0])], [top_2.iloc[0]]) if top_2.index[0] != tile else ([int(top_2.index[1])], [top_2.iloc[1]])
                 else:
-                    return ([int(top_2.index[0])], [top_2.iloc[0]]) if top_2.index[0] != tile else ([int(top_2.index[1])], [top_2.iloc[1]])
-            else:
-                return ([int(top_2.index[0])], [top_2.iloc[0]])
-        elif self.transition_probs[int(segment)] >= 0.5: # High probability of moving to a different tile
-            return ([np.nan], [np.nan]) # Then is not possible to predict that the user is going to stay looking at the same tile
+                    return ([int(top_2.index[0])], [top_2.iloc[0]])
+            else: # No data available of users looking at the provided tile for the given segment 
+                return ([np.nan], [np.nan]) # Then is not possible to predict what tile the user is going to focus on the most
         else:
             return ([tile], [1 - self.transition_probs[int(segment)]])
 
