@@ -7,6 +7,8 @@ ENV ENABLE_PREFETCHING="true"
 ENV VIEWPORT_SIZE=-1
 ENV BUFFER_SIZE=4
 ENV SERVER_URL="http://localhost:80"
+ENV SERVER_HOST="localhost"
+ENV CLIENT_HOST="localhost"
 ENV PERFECT_PREDICTION="true"
 ENV REDIS_HOST="localhost"
 ENV ENABLE_TC="false"
@@ -26,7 +28,7 @@ RUN chown -R ${uid}:${gid} /app
 RUN apt-get clean \
     && apt-get update 
     
-RUN apt-get install -y nginx gcc g++ openssh-server htop build-essential python-dev python3-dev iproute2 inetutils-ping kmod
+RUN apt-get install -y nginx gcc g++ openssh-server htop build-essential python-dev python3-dev iproute2 inetutils-ping kmod iperf3 bmon
 RUN pip install -r requirements.txt --src /usr/local/src
 
 # RUN tc qdisc add dev lo root handle 1: htb default 12
