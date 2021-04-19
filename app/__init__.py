@@ -16,16 +16,16 @@ from instance.config import app_config
 api_endpoint = ''
 
 # Set logger
-log_header = 'date|video|quality|filename|k|prefetch|perfect_prediction'
-logger = logging.getLogger(__name__)
-file_handler = FileHandler(filename=os.getenv('QUERY_LOG'), header=log_header, delay=True)
-formatter = logging.Formatter('%(asctime)s|%(message)s')
-file_handler.setFormatter(formatter)
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
-logger.setLevel(logging.DEBUG)
+# log_header = 'date|video|quality|filename|k|prefetch|perfect_prediction'
+# logger = logging.getLogger(__name__)
+# file_handler = FileHandler(filename=os.getenv('QUERY_LOG'), header=log_header, delay=True)
+# formatter = logging.Formatter('%(asctime)s|%(message)s')
+# file_handler.setFormatter(formatter)
+# console_handler = logging.StreamHandler()
+# console_handler.setFormatter(formatter)
+# logger.addHandler(file_handler)
+# logger.addHandler(console_handler)
+# logger.setLevel(logging.DEBUG)
 
 def create_app(config_name):
     from app.controllers import QHandler
@@ -43,7 +43,7 @@ def create_app(config_name):
         try:
             if int(quality) not in app.config["SUPPORTED_QUALITIES"]:
                 raise ValueError(f'Quality {quality} not in {app.config["SUPPORTED_QUALITIES"]}')
-            logger.info(f'{video_id}|{quality}|{filename}|{request.args.get("k")}|{request.args.get("prefetch")}|{request.args.get("perfect_prediction")}')
+            # logger.info(f'{video_id}|{quality}|{filename}|{request.args.get("k")}|{request.args.get("prefetch")}|{request.args.get("perfect_prediction")}')
             user_id = int(request.args.get("user_id")) if request.args.get("user_id") else None
             vp_size = int(request.args.get("k")) if request.args.get("k") else -1
             fold = int(request.args.get("fold")) if request.args.get("fold") else 1

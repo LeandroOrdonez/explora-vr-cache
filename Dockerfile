@@ -28,7 +28,7 @@ RUN chown -R ${uid}:${gid} /app
 RUN apt-get clean \
     && apt-get update 
     
-RUN apt-get install -y nginx gcc g++ openssh-server htop build-essential python-dev python3-dev iproute2 inetutils-ping kmod iperf3 bmon
+RUN apt-get install -y nginx gcc g++ openssh-server htop build-essential python-dev python3-dev iproute2 inetutils-ping redis-server kmod iperf3 bmon
 RUN pip install -r requirements.txt --src /usr/local/src
 
 # RUN tc qdisc add dev lo root handle 1: htb default 12
@@ -38,5 +38,6 @@ RUN pip install -r requirements.txt --src /usr/local/src
 COPY nginx.conf /etc/nginx
 RUN chmod +x ./traffic-control.sh
 RUN chmod +x ./start.sh
+# RUN chmod +x ./instance/prefetcher.py
 CMD ["./start.sh"]
 #CMD ["flask", "run", "--host", "0.0.0.0"]

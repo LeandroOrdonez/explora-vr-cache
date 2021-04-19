@@ -7,5 +7,9 @@ then
     ./traffic-control.sh -o --delay=${LATENCY} --jitter=${JITTER} --uspeed=${BANDWIDTH} --dspeed=${BANDWIDTH} ${CIP}
 fi
 
+service redis-server start
+echo "Loading Prefetcher..."
+nohup python -u ./instance/prefetcher.py >/dev/null 2>&1 &
+echo "Starting NGINX..."
 service nginx start
 uwsgi --ini uwsgi.ini
