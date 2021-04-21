@@ -42,10 +42,10 @@ spec:
           value: "http://$(EXPLORA_VR_SERVER_SERVICE_HOST):$(EXPLORA_VR_SERVER_SERVICE_PORT)"
         - name: SERVER_HOST
           value: "$(EXPLORA_VR_SERVER_SERVICE_HOST)"
-        - name: CLIENT_HOST 
-          valueFrom:
-            fieldRef:
-              fieldPath: status.hostIP
+        # - name: CLIENT_HOST 
+        #   valueFrom:
+        #     fieldRef:
+        #       fieldPath: status.hostIP
  
         envFrom:
         - configMapRef:

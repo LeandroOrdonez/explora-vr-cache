@@ -2,9 +2,9 @@
 
 if [ "$ENABLE_TC" == "true" ]
 then
-    #CIP=$(getent hosts ${CLIENT_HOST} | cut -d' ' -f1)
-    echo "./traffic-control.sh -o --delay=${LATENCY} --jitter=${JITTER} --uspeed=${BANDWIDTH} --dspeed=${BANDWIDTH} ${CLIENT_HOST}"
-    ./traffic-control.sh -o --delay=${LATENCY} --jitter=${JITTER} --uspeed=${BANDWIDTH} --dspeed=${BANDWIDTH} ${CLIENT_HOST}
+    CIP=$(ip r | grep default | awk -v OFS=\| '{ print $3 }')
+    echo "./traffic-control.sh -o --delay=${LATENCY} --jitter=${JITTER} --uspeed=${BANDWIDTH} --dspeed=${BANDWIDTH} ${CIP}"
+    ./traffic-control.sh -o --delay=${LATENCY} --jitter=${JITTER} --uspeed=${BANDWIDTH} --dspeed=${BANDWIDTH} ${CIP}
 fi
 
 service redis-server start
