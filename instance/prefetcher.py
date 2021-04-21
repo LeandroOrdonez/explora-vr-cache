@@ -34,7 +34,7 @@ class Prefetcher:
             for v in Config.VIDEO_CATALOG:	
 	                self.prefetch_models[f'v{v}'] = {}	
 	                for fold in range(1,9):	
-	                    self.prefetch_models[f'v{v}'][f'f{fold}'] = pickle.load(open(f'./instance/model_files/fold_{fold}/em_v{v}_th90.pkl','rb'))
+	                    self.prefetch_models[f'v{v}'][f'f{fold}'] = pickle.load(open(f'./instance/model_files/fold_{fold}/em_v{v}_th95.pkl','rb'))
 
         print(f'[Prefetcher] OK, Listening...')
 

@@ -16,7 +16,7 @@ data:
   REDIS_HOST: 'localhost'
   ENABLE_TC: 'true'
   BANDWIDTH: '25mbit'
-  LATENCY: '500'
+  LATENCY: '5'
   JITTER: '0'
 ---
 apiVersion: extensions/v1beta1
@@ -52,6 +52,7 @@ spec:
             name: explora-vr-cache-config
         image: gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache:v0.1.th90
         name: explora-vr-cache
+        imagePullPolicy: Always
         securityContext:
           capabilities:
             add:
