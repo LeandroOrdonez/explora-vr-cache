@@ -7,8 +7,8 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-   - port: 80
-     targetPort: 80
-     nodePort: 30080
+   - port: 88
+     targetPort: 88
+     nodePort: 30188
   selector:
    app: explora-vr-cache
