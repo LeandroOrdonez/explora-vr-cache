@@ -12,14 +12,11 @@ data:
   ENABLE_PREFETCHING: 'true'
   VIEWPORT_SIZE: '-1'
   BUFFER_SIZE: '10'
-  SERVER_URL: 'http://10.10.139.123:30080'
-  SERVER_HOST: '10.10.139.123'
-  CLIENT_HOST: '10.10.139.123'
   PERFECT_PREDICTION: 'false'
   REDIS_HOST: 'localhost'
-  ENABLE_TC: 'false'
+  ENABLE_TC: 'true'
   BANDWIDTH: '25mbit'
-  LATENCY: '5'
+  LATENCY: '500'
   JITTER: '0'
 ---
 apiVersion: extensions/v1beta1
@@ -40,7 +37,14 @@ spec:
         app: explora-vr-cache
     spec:
       containers:
-      - envFrom:
+      - env:
+        - name: SERVER_URL
+          value: "http://$(EXPLORA_VR_SERVER_SERVICE_HOST):$(EXPLORA_VR_SERVER_SERVICE_PORT)"
+        - name: SERVER_HOST
+          value: "$(EXPLORA_VR_SERVER_SERVICE_HOST)"
+        - name: CLIENT_HOST 
+          value: "$(EXPLORA_VR_CLIENT_SERVICE_HOST)" 
+        envFrom:
         - configMapRef:
             name: explora-vr-cache-config
         image: gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache
