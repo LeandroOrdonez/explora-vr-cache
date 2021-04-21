@@ -34,7 +34,7 @@ class Prefetcher:
             for v in Config.VIDEO_CATALOG:	
 	                self.prefetch_models[f'v{v}'] = {}	
 	                for fold in range(1,9):	
-	                    self.prefetch_models[f'v{v}'][f'f{fold}'] = pickle.load(open(f'./instance/model_files/fold_{fold}/em_v{v}_th90.pkl','rb'))
+	                    self.prefetch_models[f'v{v}'][f'f{fold}'] = pickle.load(open(f'./instance/model_files/fold_{fold}/em_v{v}_th95.pkl','rb'))
 
         print(f'[Prefetcher] OK, Listening...')
 
@@ -124,7 +124,7 @@ class Prefetcher:
         else:
             return self.buffer.set(f'{video}:{segment+ 1}:{tile + 1}:{quality}', self.fetch(*tuple(tmp_args)))
 
-    def fetch(self, t_hor, t_vert, video_id, quality, filename, vp_size=-1, user_id=None, fold=1):
+    def fetch(self, t_hor, t_vert, video_id, quality, filename, vp_size=-1, user_id=None, fold=1, ct=False):
         # print("[get_video_tile] method call")
         server_url = os.getenv("SERVER_URL") if os.getenv("SERVER_URL") else "http://localhost:5000"
         url = f'{server_url}/{video_id}/{t_hor}x{t_vert}/{quality}/{filename}'
@@ -163,8 +163,9 @@ class Prefetcher:
         vp_size = args[5]
         user_id = args[6]
         fold = args[7]
+        ct = args[8]
         tile, seg = re.findall(r'(\d+)\_(\d+).', filename)[0]
-        return int(video), int(quality), int(tile), int(seg), int(vp_size), user_id, int(fold)
+        return int(video), int(quality), int(tile), int(seg), int(vp_size), user_id, int(fold), bool(ct)
 
 def main():
     """ main method """
@@ -179,14 +180,29 @@ def main():
     for message in pubsub.listen():
         if message.get("type") == "message":
             args = json.loads(message.get("data"))
-            # print(f"[Prefetcher] received: {args}")
-            video, quality, tile, seg, vp_size, user_id, fold = p.get_video_segment_and_tile(args)
-            # run_prefetch call inside a new Thread. Direct call doesn't work.
-            Thread(
-                target=p.run_prefetch,
-                args=(video, tile, seg, vp_size, user_id, fold, args),
-                daemon=True
-            ).start()
+            print(f"[Prefetcher] received: {args}")
+            video, quality, tile, seg, vp_size, user_id, fold, ct = p.get_video_segment_and_tile(args)
+            # # run_prefetch call inside a new Thread. Direct call doesn't work.
+            # Thread(
+            #     target=p.run_prefetch,
+            #     args=(video, tile, seg, vp_size, user_id, fold, args),
+            #     daemon=True
+            # ).start()
+            
+            # Prefetch current segment
+            if not (p.buffer_keys.contains(f'{video}:{seg}') or p.init_buffer_keys.contains(f'{video}:{seg}')): #(int(os.getenv("VIEWPORT_SIZE")) > 1):
+                Thread(
+                    target=p.prefetch_segment,
+                    args=(args, video, seg, tile, vp_size, False, user_id, fold),
+                    daemon=True
+                ).start()
+            # Prefetch next segment
+            if not p.buffer_keys.contains(f'{video}:{seg + 1}'):
+                Thread(
+                    target=p.prefetch_segment,
+                    args=(args, video, seg, tile, vp_size, True, user_id, fold),
+                    daemon=True
+                ).start()
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ fi
 
 service redis-server start
 echo "Loading Prefetcher..."
-nohup python -u ./instance/prefetcher.py >/dev/null 2>&1 &
+nohup python -u ./instance/prefetcher.py > prefetcher.log &
 echo "Starting NGINX..."
 service nginx start
 uwsgi --ini uwsgi.ini

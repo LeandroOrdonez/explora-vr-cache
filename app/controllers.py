@@ -19,7 +19,7 @@ class QHandler():
 
     @staticmethod
     @PrefetchBufferHandler
-    def get_video_tile(t_hor, t_vert, video_id, quality, filename, vp_size=-1, user_id=None, fold=1):
+    def get_video_tile(t_hor, t_vert, video_id, quality, filename, vp_size=-1, user_id=None, fold=1, ct=False):
         # print("[get_video_tile] method call")
         server_url = os.getenv("SERVER_URL") if os.getenv("SERVER_URL") else "http://localhost:5000"
         url = f'{server_url}/{video_id}/{t_hor}x{t_vert}/{quality}/{filename}'

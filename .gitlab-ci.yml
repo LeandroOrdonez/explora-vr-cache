@@ -15,7 +15,7 @@ stages:
 docker build:
   stage: Build & Push image
   only:
-    - master
+    - decouple-prefetcher
   script:
     - docker info
     - docker build -t gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache .
