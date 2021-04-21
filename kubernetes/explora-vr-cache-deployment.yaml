@@ -43,11 +43,14 @@ spec:
         - name: SERVER_HOST
           value: "$(EXPLORA_VR_SERVER_SERVICE_HOST)"
         - name: CLIENT_HOST 
-          value: "$(EXPLORA_VR_CLIENT_SERVICE_HOST)" 
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+ 
         envFrom:
         - configMapRef:
             name: explora-vr-cache-config
-        image: gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache
+        image: gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache:v0.1.th90
         name: explora-vr-cache
         securityContext:
           capabilities:
