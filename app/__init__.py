@@ -4,7 +4,7 @@ import logging
 import traceback
 import json
 from flask_api import FlaskAPI
-from flask import request, jsonify, abort, send_file, send_from_directory, safe_join
+from flask import request, jsonify, abort, send_file, send_from_directory, safe_join, make_response  
 from util.file_handler_with_header import FileHandlerWithHeader as FileHandler
 from io import BytesIO
 import re
@@ -51,10 +51,13 @@ def create_app(config_name):
             ct = bool(request.args.get("ct"))
             # if vp_size < 0 or vp_size > t_hor*t_vert:
             #     raise ValueError(f'Viewport size value ({vp_size}) is not valid (0 < vp size <= {t_hor*t_vert})')
-            tile_bytes = QHandler.get_video_tile(t_hor, t_vert, video_id, quality, filename, vp_size, user_id, fold, ct)
+            quality_upgrade, tile_bytes = QHandler.get_video_tile(t_hor, t_vert, video_id, quality, filename, vp_size, user_id, fold, ct)
             # print('Sending File...')
             # return send_from_directory(directory, filename=filename)
-            return send_file(BytesIO(tile_bytes), mimetype='video/iso.segment')
+            response = make_response(send_file(BytesIO(tile_bytes), mimetype='video/iso.segment'))
+            response.headers['X-Quality-Upgrade'] = 'true' if quality_upgrade else 'false'
+            return response
+
         except Exception as e:
             print('[ERROR]', e)
             traceback.print_exc()

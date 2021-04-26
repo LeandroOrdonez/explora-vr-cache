@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: explora-vr-cache
+  labels:
+    app: explora-vr-cache
+spec:
+  type: LoadBalancer
+  ports:
+   - port: 88
+     targetPort: 88
+     nodePort: 30188
+  selector:
+   app: explora-vr-cache

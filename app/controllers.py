@@ -33,4 +33,5 @@ class QHandler():
         #     tile_bytes = BytesIO(fh.read())
         query_string = f'k={vp_size}&fold={fold}&prefetch={os.getenv("ENABLE_PREFETCHING") == "true"}&perfect_prediction={os.getenv("PERFECT_PREDICTION") == "true"}'
         tile_bytes = requests.get(f'{url}?{query_string}').content
-        return tile_bytes
+        quality_upgrade = False
+        return quality_upgrade, tile_bytes

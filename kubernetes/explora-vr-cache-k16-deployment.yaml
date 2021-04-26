@@ -12,7 +12,7 @@ data:
   ENABLE_PREFETCHING: 'true'
   VIEWPORT_SIZE: '-1'
   BUFFER_SIZE: '10'
-  PERFECT_PREDICTION: 'false'
+  PERFECT_PREDICTION: 'true'
   REDIS_HOST: 'localhost'
   ENABLE_TC: 'true'
   BANDWIDTH: '25mbit'
@@ -50,13 +50,15 @@ spec:
         envFrom:
         - configMapRef:
             name: explora-vr-cache-config
-        image: gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache:v0.1.th90
+        image: gitlab.ilabt.imec.be:4567/lordezan/explora-vr-cache:v0.1.k16
         name: explora-vr-cache
         imagePullPolicy: Always
         securityContext:
           capabilities:
             add:
               - NET_ADMIN
+      nodeSelector:
+        explora-env: test
       restartPolicy: Always
       imagePullSecrets:
         - name: regcred    

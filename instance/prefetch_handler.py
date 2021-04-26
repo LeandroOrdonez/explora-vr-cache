@@ -41,18 +41,21 @@ class PrefetchBufferHandler:
             # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
             n_hits = self.counters.incr('n_hits')
             print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
-            return self.init_buffer.get(tile_key)
+            quality_upgrade = False
+            return quality_upgrade, self.init_buffer.get(tile_key)
         elif self.buffer.exists(tile_key):
             # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
             n_hits = self.counters.incr('n_hits')
             print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
-            return self.buffer.get(tile_key)
+            quality_upgrade = False
+            return quality_upgrade, self.buffer.get(tile_key)
         # If LQ tile requested, but HQ version in buffer then return HQ tile
         elif quality == Config.SUPPORTED_QUALITIES[0] and self.buffer.exists(hq_tile_key): # If LQ tile requested, but HQ version in buffer then return HQ
              # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
             n_hits = self.counters.incr('n_hits')
             print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
-            return self.buffer.get(hq_tile_key)
+            quality_upgrade = True
+            return quality_upgrade, self.buffer.get(hq_tile_key)
         else:
             return self.fn(*args)
 

@@ -20,6 +20,7 @@ class Prefetcher:
         self.buffer_keys_len = int(os.getenv("BUFFER_SIZE"))
         # self.n_queries = 0
         # self.n_hits = 0
+        self.session = requests.Session()
         for video in Config.VIDEO_CATALOG:
             args = (Config.T_HOR, Config.T_VERT, video, Config.SUPPORTED_QUALITIES[-1], 'seg_dash_trackX_X.m4s') # Only important elements from this tuple at initialization are T_VER, T_HOR and the video ID, the rest are placeholders, basically 
             Thread(
@@ -34,7 +35,7 @@ class Prefetcher:
             for v in Config.VIDEO_CATALOG:	
 	                self.prefetch_models[f'v{v}'] = {}	
 	                for fold in range(1,9):	
-	                    self.prefetch_models[f'v{v}'][f'f{fold}'] = pickle.load(open(f'./instance/model_files/fold_{fold}/em_v{v}_k16.pkl','rb'))
+	                    self.prefetch_models[f'v{v}'][f'f{fold}'] = pickle.load(open(f'./instance/model_files/fold_{fold}/em_v{v}_th90.pkl','rb'))
 
         print(f'[Prefetcher] OK, Listening...')
 
@@ -137,7 +138,7 @@ class Prefetcher:
         # with open(filepath, 'rb') as fh:
         #     tile_bytes = BytesIO(fh.read())
         query_string = f'k={vp_size}&fold={fold}&prefetch={os.getenv("ENABLE_PREFETCHING") == "true"}&perfect_prediction={os.getenv("PERFECT_PREDICTION") == "true"}'
-        tile_bytes = requests.get(f'{url}?{query_string}').content
+        tile_bytes = self.session.get(f'{url}?{query_string}').content
         return tile_bytes
 
     def load_user_traces(self):
