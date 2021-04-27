@@ -2,7 +2,7 @@
 
 if [ "$ENABLE_TC" == "true" ]
 then
-    CIP=$(ip r | grep default | awk -v OFS=\| '{ print $3 }')
+    CIP=$(getent hosts ${CLIENT_HOST} | cut -d' ' -f1)
     echo "./traffic-control.sh -o --delay=${LATENCY} --jitter=${JITTER} --uspeed=${BANDWIDTH} --dspeed=${BANDWIDTH} ${CIP}"
     ./traffic-control.sh -o --delay=${LATENCY} --jitter=${JITTER} --uspeed=${BANDWIDTH} --dspeed=${BANDWIDTH} ${CIP}
 fi
