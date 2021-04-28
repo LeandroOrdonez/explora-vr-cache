@@ -28,13 +28,8 @@ class PrefetchBufferHandler:
         if(os.getenv('ENABLE_PREFETCHING') == 'false'):
             return self.fn(*args)
         video, quality, tile, seg, ct = self.get_video_segment_and_tile(args)
-        # Thread(
-        #     target=self.run_prefetch,
-        #     args=(video, tile, seg, vp_size, user_id, fold, args),
-        #     daemon=True
-        # ).start()
-        if ct:
-            self.publisher.publish("prefetch", json.dumps(args))
+        # if ct:
+        #     self.publisher.publish("prefetch", json.dumps(args))
         tile_key = f'{video}:{seg}:{tile}:{quality}'
         hq_tile_key = f'{video}:{seg}:{tile}:{Config.SUPPORTED_QUALITIES[-1]}'
         if self.init_buffer.exists(tile_key):

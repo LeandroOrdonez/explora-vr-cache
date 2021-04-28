@@ -7,7 +7,9 @@ from flask_api import FlaskAPI
 from flask import request, jsonify, abort, send_file, send_from_directory, safe_join, make_response  
 from util.file_handler_with_header import FileHandlerWithHeader as FileHandler
 from io import BytesIO
+from redis import Redis
 import re
+import json
 
 
 # local import
@@ -35,6 +37,7 @@ def create_app(config_name):
     app.config.from_pyfile('config.py')
     t_vert = app.config['T_VERT']
     t_hor = app.config['T_HOR']
+    publisher = Redis(host=os.getenv("REDIS_HOST"), charset="utf-8", decode_responses=True)
 
     # /0/4x4/4/seg_dash_track1_30.m4s
     @app.route(f'{api_endpoint}/<string:video_id>/{t_hor}x{t_vert}/<int:quality>/<string:filename>', methods=['GET'])
@@ -67,5 +70,12 @@ def create_app(config_name):
                 response = jsonify(error=f"Requested (video, segment, tile) not found")
             response.status_code = 404   
             abort(response)
+    
+    @app.route(f'{api_endpoint}/prefetch/<string:video_id>/{t_hor}x{t_vert}', methods=['POST'])
+    def do_prefetch(video_id):
+        p_data = request.get_json()
+        p_data['v_id'] = int(video_id)
+        publisher.publish("prefetch", json.dumps(p_data))
+        return jsonify(success=True)
 
     return app
