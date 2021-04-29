@@ -1,6 +1,7 @@
 numpy >= 1.16.0
 tqdm
 pandas
+scipy
 flask
 Flask==1.0.2
 Flask-API
