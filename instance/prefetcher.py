@@ -57,7 +57,6 @@ class Prefetcher:
         if self.buffer_keys.qsize() >= self.buffer_keys_len:
             first_key = self.buffer_keys.get().decode('utf-8')
             self.remove_segment_from_buffer(first_key)
-            del self.segment_rankings[tuple(map(int, first_key.split(':')))]
         # self.buffer[(video, actual_segment + 1)] = dict()
         self.buffer_keys.put(f'{video}:{segment}')
         if (video, segment) not in self.segment_rankings:
@@ -116,6 +115,7 @@ class Prefetcher:
     def remove_segment_from_buffer(self, key):
         keys = self.buffer.keys(f'{key}:*')
         self.buffer.delete(*keys)
+        del self.segment_rankings[tuple(map(int, key.split(':')))]
 
 def main():
     """ main method """
