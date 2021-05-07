@@ -13,4 +13,4 @@ uWSGI==2.0.17.1
 Werkzeug==0.14.1
 requests
 redis
-tcconfig
+#tcconfig
