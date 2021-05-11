@@ -6,6 +6,7 @@ ENV QUERY_LOG="./issued_queries.log"
 ENV ENABLE_PREFETCHING="true"
 ENV VIEWPORT_SIZE=-1
 ENV BUFFER_SIZE=4
+ENV N_CLIENTS=1
 ENV SERVER_URL="http://localhost:80"
 ENV SERVER_HOST="localhost"
 ENV CLIENT_HOST="localhost"

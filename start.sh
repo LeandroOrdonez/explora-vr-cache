@@ -2,7 +2,7 @@
 
 if [ "$ENABLE_TC" == "true" ]
 then
-    for h in 1 2 3 4 5 6
+    for h in $(seq 1 $N_CLIENTS)
     do
         CIP=$(getent hosts ${CLIENT_HOST}_${h} | cut -d' ' -f1)
         echo "./traffic-control.sh -o --delay=${LATENCY} --jitter=${JITTER} --uspeed=${BANDWIDTH} --dspeed=${BANDWIDTH} ${CIP}"
