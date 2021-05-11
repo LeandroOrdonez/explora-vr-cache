@@ -76,6 +76,7 @@ class Prefetcher:
     def update_segment(self, video, segment, order):
         new_rank, kt_dist_accum, n_views = self.segment_rankings[(video, segment)].update_rank(order)
         vp_size = int(np.ceil(Config.T_VERT*Config.T_HOR*(1 - (kt_dist_accum/n_views))))
+        print(f'{video},{segment},{kt_dist_accum/n_views},{vp_size}')
         for t_id in new_rank[:vp_size]:
             for q_index in Config.SUPPORTED_QUALITIES:
                 Thread(
@@ -130,7 +131,7 @@ def main():
     for message in pubsub.listen():
         if message.get("type") == "message":
             p_data = json.loads(message.get("data"))
-            print(f"[Prefetcher] received: {p_data}")
+            # print(f"[Prefetcher] received: {p_data}")
             s_id = p_data['s_id']
             v_id = p_data['v_id']
             qualities = p_data['qualities']
