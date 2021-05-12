@@ -14,10 +14,11 @@ class Prefetcher:
 
     def __init__(self):
         print(f'[Prefetcher] __init__')
-        self.buffer = Redis(host=os.getenv("REDIS_HOST"), db=0)
+        self.collective_buffer = Redis(host=os.getenv("REDIS_HOST"), db=0)
         self.init_buffer = Redis(host=os.getenv("REDIS_HOST"), db=1) # It buffers the first segments of all videos in the catalog and keeps them in memory
         self.buffer_keys = RedisQueue('buffer_keys', host=os.getenv("REDIS_HOST"), db=3)
         self.init_buffer_keys = RedisQueue('init_buffer_keys', host=os.getenv("REDIS_HOST"), db=3)
+        self.user_buffer = Redis(host=os.getenv("REDIS_HOST"), db=4)
         self.buffer_keys_len = int(os.getenv("BUFFER_SIZE"))
         # self.n_queries = 0
         # self.n_hits = 0
@@ -47,19 +48,23 @@ class Prefetcher:
             for q_index in Config.SUPPORTED_QUALITIES:
                 # print(f"PREFETCHING TILE {i_tile + 1} Q{q_index} FROM SEGMENT {segment} VIDEO {video}")
                 Thread(
-                    target=self.fetch_tile,
-                    args=(i_tile + 1, segment, video, q_index, True),
+                    target=self.buffer_tile_into_init_buffer,
+                    args=(i_tile + 1, segment, video, q_index),
                     daemon=True
                 ).start()
 
-    def prefetch_segment(self, video, segment, qualities, order):
+    def prefetch_segment(self, video, segment, user, qualities, order):
         # print(f"[prefetch_segment] {args}")
-        if self.buffer_keys.qsize() >= self.buffer_keys_len:
-            first_key = self.buffer_keys.get().decode('utf-8')
-            self.remove_segment_from_buffer(first_key)
-        # self.buffer[(video, actual_segment + 1)] = dict()
-        self.buffer_keys.put(f'{video}:{segment}')
-        if (video, segment) not in self.segment_rankings:
+        # Let's start by updating the segment tiles in the collective buffer
+        updated = self.update_segment(video, segment, order)
+        # Update the keys from the collective buffer 
+        if not self.buffer_keys.contains(f'{video}:{segment}'):
+            if self.buffer_keys.qsize() >= self.buffer_keys_len:
+                first_key = self.buffer_keys.get().decode('utf-8')
+                self.remove_segment_from_collective_buffer(first_key)
+            # self.buffer[(video, actual_segment + 1)] = dict()
+            self.buffer_keys.put(f'{video}:{segment}')
+        # Create a new rank object for the current video and segment
             s_rank = SegmentRank()
             s_rank.update_rank(order)
             self.segment_rankings[(video, segment)] = s_rank
@@ -67,35 +72,59 @@ class Prefetcher:
             quality = qualities[t_id - 2]
             q_idx = int(1.5*quality**2 - 0.5*quality)
             Thread(
-                target=self.fetch_tile,
-                args=(t_id - 1, segment, video, q_idx),
+                target=self.buffer_tile,
+                args=(t_id - 1, segment, video, q_idx, user, not updated), # if updated => don't store tile into the collective buffer
                 daemon=True
-            ).start()                
-            # print(f'[prefetch] Current buffer: {[(k, v.items()) for k, v in self.buffer.items()]}')
+            ).start()
+        # Remove tiles from the previous segment:
+        prev_seg_key = f'{user}:{video}:{segment - 1}'
+        Thread(
+            target=self.remove_segment_from_user_buffer,
+            args=(prev_seg_key,),
+            daemon=True
+        ).start()
+        return
 
     def update_segment(self, video, segment, order):
-        new_rank, kt_dist_accum, n_views = self.segment_rankings[(video, segment)].update_rank(order)
-        vp_size = int(np.ceil(Config.T_VERT*Config.T_HOR*(1 - (kt_dist_accum/n_views))))
-        print(f'{video},{segment},{kt_dist_accum/n_views},{vp_size}')
-        for t_id in new_rank[:vp_size]:
-            for q_index in Config.SUPPORTED_QUALITIES:
-                Thread(
-                    target=self.fetch_tile,
-                    args=(t_id - 1, segment, video, q_index),
-                    daemon=True
-                ).start()
+        if (video, segment) in self.segment_rankings:
+            new_rank, kt_dist_accum, n_views = self.segment_rankings[(video, segment)].update_rank(order)
+            vp_size = int(np.ceil(Config.T_VERT*Config.T_HOR*(1 - (kt_dist_accum/n_views))))
+            # print(f'{video},{segment},{kt_dist_accum/n_views},{vp_size}')
+            for t_id in new_rank[:vp_size]:
+                for q_index in Config.SUPPORTED_QUALITIES:
+                    Thread(
+                        target=self.buffer_tile,
+                        args=(t_id - 1, segment, video, q_index),
+                        daemon=True
+                    ).start()
+            # There is a ranking for (video, segment) and it was updated succesfully
+            return True
+        # There is no ranking for (video, segment) yet
+        return False
 
-    def fetch_tile(self, tile, segment, video, quality, into_init_buffer=False):
-        # print(f"[fetch_tile] seg_dash_track{tile}_{segment}.m4s")
+    def buffer_tile_into_init_buffer(self, tile, segment, video, quality):
+        filename = f'seg_dash_track{tile}_{segment}.m4s'
+        key = f'{video}:{segment}:{tile}:{quality}'
+        if not self.init_buffer.exists(key):
+            return self.init_buffer.set(key, self.fetch(Config.T_HOR, Config.T_VERT, video, quality, filename))
+    
+    def buffer_tile(self, tile, segment, video, quality, user=-1, save_to_collective_buffer=True):
+        # print(f"[buffer_tile] seg_dash_track{tile}_{segment}.m4s")
         filename = f'seg_dash_track{tile}_{segment}.m4s'
         key = f'{video}:{segment}:{tile}:{quality}'
         # Redis.setnx (set if not exists) could've been used next but 
         # then the fetch call would always be made which is precisely
         # what we are trying to avoid
-        if into_init_buffer and not self.init_buffer.exists(key):
-            return self.init_buffer.set(key, self.fetch(Config.T_HOR, Config.T_VERT, video, quality, filename))
-        elif not self.buffer.exists(key):
-            return self.buffer.set(key, self.fetch(Config.T_HOR, Config.T_VERT, video, quality, filename))
+        if not self.collective_buffer.exists(key):
+            if user < 0:
+                return self.collective_buffer.set(key, self.fetch(Config.T_HOR, Config.T_VERT, video, quality, filename))
+            else:
+                user_key = f'{user}:{key}'
+                tile_bytes = self.fetch(Config.T_HOR, Config.T_VERT, video, quality, filename)
+                self.user_buffer.set(user_key, tile_bytes)
+                if save_to_collective_buffer:
+                    self.collective_buffer.set(key, tile_bytes)
+                return
 
     def fetch(self, t_hor, t_vert, video_id, quality, filename):
         # print("[get_video_tile] method call")
@@ -113,10 +142,14 @@ class Prefetcher:
         tile_bytes = self.session.get(f'{url}?{query_string}').content
         return tile_bytes
 
-    def remove_segment_from_buffer(self, key):
-        keys = self.buffer.keys(f'{key}:*')
-        self.buffer.delete(*keys)
+    def remove_segment_from_collective_buffer(self, key):
+        keys = self.collective_buffer.keys(f'{key}:*')
+        self.collective_buffer.delete(*keys)
         del self.segment_rankings[tuple(map(int, key.split(':')))]
+    
+    def remove_segment_from_user_buffer(self, key):
+        keys = self.user_buffer.keys(f'{key}:*')
+        self.user_buffer.delete(*keys)
 
 def main():
     """ main method """
@@ -131,23 +164,24 @@ def main():
     for message in pubsub.listen():
         if message.get("type") == "message":
             p_data = json.loads(message.get("data"))
-            # print(f"[Prefetcher] received: {p_data}")
+            print(f"[Prefetcher] received: {p_data}")
             s_id = p_data['s_id']
             v_id = p_data['v_id']
+            u_id = p_data['u_id']
             qualities = p_data['qualities']
             order = p_data['order']
-            if not (p.buffer_keys.contains(f'{v_id}:{s_id}') or p.init_buffer_keys.contains(f'{v_id}:{s_id}')): #(int(os.getenv("VIEWPORT_SIZE")) > 1):
+            if not p.init_buffer_keys.contains(f'{v_id}:{s_id}'): #(int(os.getenv("VIEWPORT_SIZE")) > 1):
                 Thread(
                     target=p.prefetch_segment,
-                    args=(v_id, s_id, qualities, order),
+                    args=(v_id, s_id, u_id, qualities, order),
                     daemon=True
                 ).start()
-            elif p.buffer_keys.contains(f'{v_id}:{s_id}'):
-                Thread(
-                    target=p.update_segment,
-                    args=(v_id, s_id, order),
-                    daemon=True
-                ).start()
+            # if p.buffer_keys.contains(f'{v_id}:{s_id}'):
+            #     Thread(
+            #         target=p.update_segment,
+            #         args=(v_id, s_id, order),
+            #         daemon=True
+            #     ).start()
 
 
 

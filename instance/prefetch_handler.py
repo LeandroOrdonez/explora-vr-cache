@@ -15,9 +15,10 @@ class PrefetchBufferHandler:
         print(f'__init__')
         # self.manager = Manager()
         self.fn = fn
-        self.buffer = Redis(host=os.getenv("REDIS_HOST"), db=0)
+        self.collective_buffer = Redis(host=os.getenv("REDIS_HOST"), db=0)
         self.init_buffer = Redis(host=os.getenv("REDIS_HOST"), db=1) # It buffers the first segments of all videos in the catalog and keeps them in memory
         self.counters = Redis(host=os.getenv("REDIS_HOST"), db=2)
+        self.user_buffer = Redis(host=os.getenv("REDIS_HOST"), db=4)
         self.publisher = Redis(host=os.getenv("REDIS_HOST"), charset="utf-8", decode_responses=True)
 
 
@@ -27,7 +28,7 @@ class PrefetchBufferHandler:
         # print(f'[Prefetch_Handler] Current buffer: {self.buffer.keys()}')
         if(os.getenv('ENABLE_PREFETCHING') == 'false'):
             return self.fn(*args)
-        video, quality, tile, seg, ct = self.get_video_segment_and_tile(args)
+        video, quality, tile, seg, user, ct = self.get_video_segment_and_tile(args)
         # if ct:
         #     self.publisher.publish("prefetch", json.dumps(args))
         tile_key = f'{video}:{seg}:{tile}:{quality}'
@@ -38,12 +39,20 @@ class PrefetchBufferHandler:
             print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
             quality_upgrade = False
             return quality_upgrade, self.init_buffer.get(tile_key)
-        elif self.buffer.exists(tile_key):
+        elif self.collective_buffer.exists(tile_key):
             # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
             n_hits = self.counters.incr('n_hits')
             print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
             quality_upgrade = False
-            return quality_upgrade, self.buffer.get(tile_key)
+            return quality_upgrade, self.collective_buffer.get(tile_key)
+        elif self.user_buffer.exists(f'{user}:{tile_key}'):
+            # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
+            n_hits = self.counters.incr('n_hits')
+            print(f'[Prefetch_Handler] hit-ratio: {n_hits}/{n_queries} = {round((n_hits/n_queries)*100, 2)}%')
+            quality_upgrade = False
+            tile_bytes = self.user_buffer.get(f'{user}:{tile_key}')
+            self.user_buffer.delete(f'{user}:{tile_key}')
+            return quality_upgrade, tile_bytes
         # # If LQ tile requested, but HQ version in buffer then return HQ tile
         # elif quality == Config.SUPPORTED_QUALITIES[0] and self.buffer.exists(hq_tile_key): # If LQ tile requested, but HQ version in buffer then return HQ
         #      # resp = self.buffer[(video, seg)][tile] if tile in self.buffer[(video, seg)] else self.fn(*args)
@@ -59,5 +68,6 @@ class PrefetchBufferHandler:
         video = args[2]
         quality = args[3]
         tile, seg = re.findall(r'(\d+)\_(\d+).', filename)[0]
+        user = args[6]
         ct = args[8]
-        return int(video), int(quality), int(tile), int(seg), bool(ct)
+        return int(video), int(quality), int(tile), int(seg), int(user), bool(ct)
