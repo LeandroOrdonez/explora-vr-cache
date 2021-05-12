@@ -97,7 +97,7 @@ class Prefetcher:
                         args=(t_id - 1, segment, video, q_index),
                         daemon=True
                     ).start()
-            # There is a ranking for (video, segment) and it was updated succesfully
+            # There is a ranking for (video, segment) and it was succesfully updated 
             return True
         # There is no ranking for (video, segment) yet
         return False
@@ -149,7 +149,8 @@ class Prefetcher:
     
     def remove_segment_from_user_buffer(self, key):
         keys = self.user_buffer.keys(f'{key}:*')
-        self.user_buffer.delete(*keys)
+        if keys:
+            self.user_buffer.delete(*keys)
 
 def main():
     """ main method """
