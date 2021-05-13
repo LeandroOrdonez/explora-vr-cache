@@ -77,12 +77,12 @@ class Prefetcher:
                 daemon=True
             ).start()
         # Remove tiles from the previous segment:
-        prev_seg_key = f'{user}:{video}:{segment - 1}'
-        Thread(
-            target=self.remove_segment_from_user_buffer,
-            args=(prev_seg_key,),
-            daemon=True
-        ).start()
+        # prev_seg_key = f'{user}:{video}:{segment - 1}'
+        # Thread(
+        #     target=self.remove_segment_from_user_buffer,
+        #     args=(prev_seg_key,),
+        #     daemon=True
+        # ).start()
         return
 
     def update_segment(self, video, segment, order):
@@ -121,7 +121,7 @@ class Prefetcher:
             else:
                 user_key = f'{user}:{key}'
                 tile_bytes = self.fetch(Config.T_HOR, Config.T_VERT, video, quality, filename)
-                self.user_buffer.set(user_key, tile_bytes)
+                self.user_buffer.set(user_key, tile_bytes, ex=2) # Set 2 sec. expire time to ephemeral user buffer
                 if save_to_collective_buffer:
                     self.collective_buffer.set(key, tile_bytes)
                 return
