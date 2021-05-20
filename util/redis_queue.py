@@ -10,7 +10,7 @@ class RedisQueue(object):
 
     def qsize(self):
         """Return the approximate size of the queue."""
-        return self.__db.scard(self.skey)
+        return min(self.__db.llen(self.lkey), self.__db.scard(self.skey))
 
     def empty(self):
         """Return True if the queue is empty, False otherwise."""
