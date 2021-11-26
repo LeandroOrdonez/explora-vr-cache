@@ -71,8 +71,13 @@ class Prefetcher:
             s_rank.update_rank(order)
             self.segment_rankings[(video, segment)] = s_rank
         for t_id in order:
-            quality = qualities[t_id - 2]
-            q_idx = int(1.5*quality**2 - 0.5*quality)
+            if self.prefetch_mode == 'auto':
+                quality = qualities[t_id - 2]
+                q_idx = int(1.5*quality**2 - 0.5*quality)
+            elif self.prefetch_mode == 'hq':
+                q_idx = Config.SUPPORTED_QUALITIES[-1]
+            else:
+                q_idx = Config.SUPPORTED_QUALITIES[0]
             Thread(
                 target=self.buffer_tile,
                 args=(t_id - 1, segment, video, q_idx, user, not updated), # if updated => don't store tile into the collective buffer
