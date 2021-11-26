@@ -4,6 +4,7 @@ sys.path.append(r'./instance/')
 sys.path.append(r'./util/')
 import pandas as pd
 import numpy as np
+from time import perf_counter
 from threading import Thread
 from config import Config
 from redis_queue import RedisQueue
@@ -20,6 +21,7 @@ class Prefetcher:
         self.init_buffer_keys = RedisQueue('init_buffer_keys', host=os.getenv("REDIS_HOST"), db=3)
         self.user_buffer = Redis(host=os.getenv("REDIS_HOST"), db=4)
         self.buffer_keys_len = int(os.getenv("BUFFER_SIZE"))
+        self.prefetch_mode = os.getenv("PREFETCH_MODE", 'auto') # 'auto', 'hq' or 'lq'. Default: 'auto'
         # self.n_queries = 0
         # self.n_hits = 0
         self.session = requests.Session()
@@ -56,7 +58,7 @@ class Prefetcher:
     def prefetch_segment(self, video, segment, user, qualities, order):
         # print(f"[prefetch_segment] {args}")
         # Let's start by updating the segment tiles in the collective buffer
-        updated = self.update_segment(video, segment, order)
+        updated = self.update_segment(video, segment, qualities, order)
         # Update the keys from the collective buffer 
         if not self.buffer_keys.contains(f'{video}:{segment}'):
             if self.buffer_keys.qsize() >= self.buffer_keys_len:
@@ -85,18 +87,27 @@ class Prefetcher:
         # ).start()
         return
 
-    def update_segment(self, video, segment, order):
+    def update_segment(self, video, segment, qualities, order):
         if (video, segment) in self.segment_rankings:
+            # start = perf_counter()
             new_rank, kt_dist_accum, n_views = self.segment_rankings[(video, segment)].update_rank(order)
+            # print(f'{perf_counter() - start},{video}') # Report the time it takes to update the segment rank
             vp_size = int(np.ceil(Config.T_VERT*Config.T_HOR*(1 - (kt_dist_accum/n_views))))
             # print(f'{video},{segment},{kt_dist_accum/n_views},{vp_size}')
             for t_id in new_rank[:vp_size]:
-                for q_index in Config.SUPPORTED_QUALITIES:
-                    Thread(
-                        target=self.buffer_tile,
-                        args=(t_id - 1, segment, video, q_index),
-                        daemon=True
-                    ).start()
+                if self.prefetch_mode == 'auto':
+                    quality = qualities[t_id - 2]
+                    q_index = int(1.5*quality**2 - 0.5*quality)
+                elif self.prefetch_mode == 'hq':
+                    q_index = Config.SUPPORTED_QUALITIES[-1]
+                else:
+                    q_index = Config.SUPPORTED_QUALITIES[0]
+                #for q_index in Config.SUPPORTED_QUALITIES:
+                Thread(
+                    target=self.buffer_tile,
+                    args=(t_id - 1, segment, video, q_index),
+                    daemon=True
+                ).start()
             # There is a ranking for (video, segment) and it was succesfully updated 
             return True
         # There is no ranking for (video, segment) yet

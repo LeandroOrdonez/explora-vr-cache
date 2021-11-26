@@ -10,6 +10,7 @@ data:
   APP_SETTINGS: 'production'
   QUERY_LOG: './issued_queries.log'
   ENABLE_PREFETCHING: 'true'
+  PREFETCH_MODE: 'auto'
   VIEWPORT_SIZE: '-1'
   BUFFER_SIZE: '10'
   PERFECT_PREDICTION: 'false'
